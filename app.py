@@ -1,9 +1,9 @@
 import streamlit as st
 from PIL import Image
 import numpy as np
-from streamlit_drawable_canvas import st_canvas # Librería de dibujo
+from streamlit_drawable_canvas import st_canvas
 
-# Tus importaciones locales
+# Importaciones locales
 from diary_logic import save_entry, get_entries
 from travel_api import generate_story, get_recommendations
 
@@ -27,26 +27,30 @@ uploaded_file = st.file_uploader("Elige una imagen:", type=["png", "jpg", "jpeg"
 final_image_to_save = None 
 
 if uploaded_file:
-    # 1. Abrimos la imagen original (Mantenemos RGBA para guardar con calidad)
-    image = Image.open(uploaded_file).convert("RGBA")
+    # 1. Cargar imagen y guardar copia original
+    original_image = Image.open(uploaded_file)
     
-    # 2. Ajuste inteligente de tamaño para pantalla
-    max_width = 800
-    if image.width > max_width:
-        ratio = max_width / image.width
-        new_height = int(image.height * ratio)
-        display_image = image.resize((max_width, new_height))
+    # 2. PREPARAR IMAGEN PARA EL CANVAS (SOLUCIÓN DEFINITIVA)
+    # Forzamos 'RGB' puro. Esto elimina transparencias que rompen el visor.
+    if original_image.mode != "RGB":
+        canvas_image = original_image.convert("RGB")
     else:
-        display_image = image.copy()
+        canvas_image = original_image.copy()
 
-    # --- CORRECCIÓN 1: Quitar transparencia para visualización ---
-    # A veces el canvas falla al mostrar fondos RGBA. Lo pasamos a RGB solo para verlo.
-    if display_image.mode == "RGBA":
-        bg_image_for_canvas = display_image.convert("RGB")
-    else:
-        bg_image_for_canvas = display_image
+    # 3. Redimensionar si es muy grande (para que quepa en pantalla)
+    max_width = 700
+    original_width, original_height = canvas_image.size
+    
+    if original_width > max_width:
+        ratio = max_width / original_width
+        new_height = int(original_height * ratio)
+        canvas_image = canvas_image.resize((max_width, new_height))
+    
+    # Obtener dimensiones finales exactas
+    canvas_width = canvas_image.width
+    canvas_height = canvas_image.height
 
-    # 3. Controles de Dibujo
+    # 4. Controles de Dibujo
     col_draw1, col_draw2 = st.columns(2)
     with col_draw1:
         stroke_color = st.color_picker("🎨 Color del pincel:", "#FF0000")
@@ -54,37 +58,41 @@ if uploaded_file:
         stroke_width = st.slider("✏️ Grosor del pincel:", 1, 25, 5)
 
     st.write("¡Dibuja o marca tu ruta encima de la foto!")
-    
-    # --- CORRECCIÓN 2: Llave dinámica ---
-    # Usamos el nombre del archivo en la 'key'. Esto fuerza al componente a 
-    # reiniciarse por completo cuando cambias de foto.
-    canvas_key = f"canvas_{uploaded_file.name}"
 
-    # 4. El componente Lienzo (Canvas)
+    # 5. EL LIENZO (CANVAS)
+    # Usamos una key única combinada para forzar recarga si cambia la imagen
     canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.3)",
+        fill_color="rgba(255, 165, 0, 0.3)", 
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_image=bg_image_for_canvas, # Usamos la versión RGB segura
+        background_color="#FFFFFF", # Fondo base por si acaso
+        background_image=canvas_image, # Aquí va la imagen convertida a RGB
         update_streamlit=True,
-        height=bg_image_for_canvas.height,
-        width=bg_image_for_canvas.width,
+        height=canvas_height,
+        width=canvas_width,
         drawing_mode="freedraw",
-        key=canvas_key, # Llave única por foto
+        key=f"canvas_{uploaded_file.name}", # Key dinámica
     )
 
-    # 5. Lógica para guardar (Fusionar dibujo con imagen ORIGINAL)
+    # 6. GUARDAR
     if canvas_result.image_data is not None:
+        # Recuperamos el dibujo
         drawing_data = canvas_result.image_data.astype("uint8")
         drawing_image = Image.fromarray(drawing_data, "RGBA")
         
-        # Redimensionamos el dibujo al tamaño real de la foto original
-        if drawing_image.size != image.size:
-            drawing_image = drawing_image.resize(image.size, resample=Image.NEAREST)
-            
+        # Ajustamos el dibujo al tamaño de la imagen ORIGINAL (la de alta calidad)
+        if drawing_image.size != original_image.size:
+            drawing_image = drawing_image.resize(original_image.size, resample=Image.NEAREST)
+        
+        # Aseguramos que la original tenga canal alfa para poder pegarle el dibujo
+        if original_image.mode != "RGBA":
+            final_composite = original_image.convert("RGBA")
+        else:
+            final_composite = original_image.copy()
+
         # Fusionamos
-        combined_image = Image.alpha_composite(image, drawing_image)
-        final_image_to_save = combined_image
+        final_composite = Image.alpha_composite(final_composite, drawing_image)
+        final_image_to_save = final_composite
 
 # --- BOTÓN DE GUARDAR ---
 if st.button("Guardar entrada"):
