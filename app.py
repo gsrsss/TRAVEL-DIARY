@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont 
+from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 import io 
 
@@ -27,7 +27,7 @@ notes = st.text_area("Escribe tus notas o experiencias")
 st.subheader("📸 Sube una foto como recuerdo")
 uploaded_memory_photo = st.file_uploader("Elige una imagen para tu recuerdo:", type=["png", "jpg", "jpeg"], key="memory_photo_uploader")
 
-# --- NUEVO: INPUT PARA EL TÍTULO DEL RECUERDO ---
+# INPUT PARA EL TÍTULO DEL RECUERDO
 memory_title = st.text_input("Título de este recuerdo (Opcional):", placeholder="Ej. Atardecer en la playa")
 
 # Almacenamos la imagen del recuerdo en session_state
@@ -37,7 +37,7 @@ if 'memory_image' not in st.session_state:
 if uploaded_memory_photo:
     uploaded_memory_photo.seek(0) 
     st.session_state.memory_image = Image.open(uploaded_memory_photo)
-    # Mostramos la imagen con el título que escriba el usuario
+    # Mostramos la imagen
     caption_text = memory_title if memory_title else "Vista previa del recuerdo"
     st.image(st.session_state.memory_image, caption=caption_text, use_column_width=True)
 else:
@@ -58,28 +58,15 @@ with col_doodle_controls_3:
 doodle_width = 700
 doodle_height = 400
 
-# Herramienta de texto
-st.markdown("---")
-st.markdown("### 📝 Añadir Texto al Doodle")
-text_to_add = st.text_input("Escribe el texto que quieres añadir:")
-col_txt1, col_txt2, col_txt3 = st.columns(3)
-with col_txt1:
-    text_color = st.color_picker("Color texto:", "#FF0000")
-with col_txt2:
-    font_size = st.slider("Tamaño:", 10, 80, 30)
-with col_txt3:
-    font_family = st.selectbox("Fuente:", ["Arial", "Courier New", "Verdana", "Times New Roman"], index=0)
-
-# --- ARREGLO DEL CANVAS ---
 st.write("👇 ¡Dibuja aquí abajo!")
 
-# Nota: He añadido background_image=None explícitamente para evitar conflictos
+# Canvas
 doodle_canvas_result = st_canvas(
     fill_color="rgba(255, 165, 0, 0.0)", 
     stroke_width=doodle_stroke_width,
     stroke_color=doodle_stroke_color,
     background_color=doodle_bg_color, 
-    background_image=None, # <--- ESTO ES IMPORTANTE PARA QUE SE VEA EL FONDO DE COLOR
+    background_image=None, # Importante para que se vea el color de fondo
     update_streamlit=True,
     height=doodle_height,
     width=doodle_width,
@@ -90,44 +77,18 @@ doodle_canvas_result = st_canvas(
 # Inicializamos el resultado final del doodle
 doodle_final_image_to_save = None
 
-# Procesar el doodle y añadir texto
+# Procesar el dibujo para guardar
 if doodle_canvas_result.image_data is not None:
-    # Convertir el resultado del canvas a una imagen PIL
+    # 1. Obtener el dibujo (con fondo transparente)
     doodle_image = Image.fromarray(doodle_canvas_result.image_data.astype("uint8"), "RGBA")
-
-    # Si hay texto para añadir
-    if text_to_add:
-        # Crear fondo base del color seleccionado
-        bg_rgb = tuple(int(doodle_bg_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-        text_base_image = Image.new("RGBA", doodle_image.size, bg_rgb + (255,)) 
-
-        draw = ImageDraw.Draw(text_base_image)
-        try:
-            font = ImageFont.truetype(f"{font_family.lower()}.ttf", font_size)
-        except IOError:
-            font = ImageFont.load_default() 
-
-        # Centrar texto
-        # Nota: textsize está deprecado en versiones nuevas de Pillow, usamos textbbox si falla
-        try:
-             w_text, h_text = draw.textsize(text_to_add, font=font)
-        except AttributeError:
-             left, top, right, bottom = draw.textbbox((0, 0), text_to_add, font=font)
-             w_text, h_text = right - left, bottom - top
-
-        x = (doodle_image.width - w_text) / 2
-        y = (doodle_image.height - h_text) / 2
-        
-        draw.text((x, y), text_to_add, font=font, fill=text_color)
-        
-        # Combinar el texto con el dibujo del usuario
-        doodle_final_image_to_save = Image.alpha_composite(text_base_image, doodle_image)
-    else:
-        # Si no hay texto, usamos el doodle tal cual (pero asegurando el fondo de color)
-        # Creamos una base solida con el color de fondo
-        bg_rgb = tuple(int(doodle_bg_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-        solid_bg = Image.new("RGBA", doodle_image.size, bg_rgb + (255,))
-        doodle_final_image_to_save = Image.alpha_composite(solid_bg, doodle_image)
+    
+    # 2. Crear una imagen sólida con el color de fondo elegido
+    # (Esto es necesario porque el canvas devuelve fondo transparente en image_data)
+    bg_rgb = tuple(int(doodle_bg_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+    solid_bg = Image.new("RGBA", doodle_image.size, bg_rgb + (255,))
+    
+    # 3. Fusionar: Fondo de color + Dibujo
+    doodle_final_image_to_save = Image.alpha_composite(solid_bg, doodle_image)
 
 
 # --- BOTÓN DE GUARDAR ---
@@ -142,7 +103,6 @@ if st.button("💾 Guardar entrada", type="primary"):
             doodle_bytes_io.seek(0)
             doodle_to_save = Image.open(doodle_bytes_io) 
             
-        # --- PASAMOS EL TÍTULO (memory_title) A LA FUNCIÓN ---
         save_entry(str(date), location, notes, memory_image_to_save, doodle_to_save, memory_title)
         
         st.success("¡Entrada guardada!")
@@ -176,7 +136,6 @@ for e in reversed(entries):
         
         with col_ver1:
             if e.get("memory_path"): 
-                # Recuperar el título, o usar "Recuerdo" por defecto
                 titulo_foto = e.get("memory_title") if e.get("memory_title") else "Recuerdo"
                 try:
                     st.image(e["memory_path"], caption=titulo_foto, use_column_width=True)
@@ -193,11 +152,4 @@ for e in reversed(entries):
 # --- SECCIÓN 3: RECOMENDACIONES ---
 st.header("🌍 Recomendaciones")
 place = st.text_input("¿A dónde quieres ir ahora?")
-if st.button("Ver recomendaciones"):
-    if place:
-        with st.spinner("Buscando destinos..."):
-            try:
-                recs = get_recommendations(place)
-                st.write(recs)
-            except Exception as e:
-                st.error(f"Error trayendo recomendaciones: {e}")
+if st.
