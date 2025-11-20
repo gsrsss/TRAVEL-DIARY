@@ -138,8 +138,8 @@ st.markdown("<br>", unsafe_allow_html=True)
 # --- SECCIÓN 2: FOTO DE RECUERDO + STAMPS ---
 st.markdown("### 📸 2. Foto & Deco")
 
-uploaded_memory_photo = st.file_uploader("Sube tu foto favorita:", type=["png", "jpg", "jpeg"], key="memory_photo_uploader")
-memory_title = st.text_input("🏷️ Título de la foto:", placeholder="Ej. Comiendo Dango en Tokio 🍡")
+uploaded_memory_photo = st.file_uploader("Sube tu foto favorita de tu viaje:", type=["png", "jpg", "jpeg"], key="memory_photo_uploader")
+memory_title = st.text_input("Título de la foto:", placeholder="Ej. Comiendo Dango en Tokio 🍡")
 
 if 'memory_image' not in st.session_state:
     st.session_state.memory_image = None
@@ -157,8 +157,8 @@ if st.session_state.memory_image:
         st.image(st.session_state.memory_image, caption=memory_title if memory_title else "Tu Recuerdo", use_column_width=True)
 
     with col_tools:
-        st.info("¡Hora de poner stickers y hacerla aún más tú! 💖") # Texto de info cute
-        with st.expander("✨ Abrir Caja de Stickers", expanded=True):
+        st.info("¡Hora de poner stickers y hacerla aún más tú! ദ്ദി◝ ⩊ ◜.ᐟ") # Texto de info cute
+        with st.expander("Abrir Caja de Stickers ✨", expanded=True):
             
             mode = st.radio("Modo:", ["Símbolos", "Texto"], horizontal=True)
             
@@ -303,3 +303,4 @@ for e in reversed(get_entries()):
             c2.image(e['doodle_path'], caption="Mis Vibras 🎨", use_column_width=True)
         
         st.markdown("---")
+
