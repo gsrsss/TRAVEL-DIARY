@@ -4,14 +4,10 @@ from streamlit_drawable_canvas import st_canvas
 import io 
 import os
 
-# --- CORRECCIÓN IMPORTANTE AQUÍ ---
-# Importamos TODAS las funciones desde diary_logic.py
-# Ya no usamos travel_api porque unificamos todo.
+# Importamos todo desde diary_logic (Asegúrate de que diary_logic.py tenga el código que te di en el paso anterior)
 from diary_logic import save_entry, get_entries, generate_story, get_recommendations, analyze_emotion
 
-# --- CONFIGURACIÓN INICIAL ---
-st.set_page_config(page_title="Travel Diary", layout="wide", page_icon="🎀")
-# --- CONFIGURACIÓN INICIAL ---
+# --- ⚠️ ESTA LÍNEA DEBE IR SIEMPRE AQUÍ (PRIMER COMANDO ST) ---
 st.set_page_config(page_title="Travel Diary", layout="wide", page_icon="🎀")
 
 # --- ESTILOS CSS PERSONALIZADOS (THEME CUTE) ---
@@ -267,7 +263,7 @@ with col_save_btn:
         else:
             st.warning("⚠️ Faltan datos importantes 🥺")
 
-# --- EXTRAS (AQUÍ ESTÁ EL ARREGLO) ---
+# --- EXTRAS ---
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True)
 st.markdown("### 🌍 Próxima Aventura")
 
@@ -279,19 +275,15 @@ with col_rec2:
         if dest:
             with st.spinner("Consultando al oráculo viajero... 🔮"):
                 try: 
-                    # 1. Llamamos a la función REAL
                     recs = get_recommendations(dest) 
                     st.info(f"¡Aquí tienes ideas para {dest}! 👇")
-                    
-                    # 2. Mostramos el resultado en una cajita bonita (Azul pastel)
                     st.markdown(f"""
                     <div style='background-color: white; padding: 20px; border-radius: 15px; border: 2px dashed #81D4FA; color: #555;'>
                     {recs}
                     </div>
                     """, unsafe_allow_html=True)
-                    
                 except Exception as e: 
-                    st.error(f"Oopsie! No pude encontrar recomendaciones. {e}")
+                    st.error(f"Oopsie! {e}")
 
 # --- HISTORIAL ---
 st.markdown("<br><h2 style='text-align: center;'>📚 Mi Colección de Recuerdos</h2>", unsafe_allow_html=True)
@@ -317,4 +309,3 @@ for e in reversed(get_entries()):
             c2.image(e['doodle_path'], caption="Mis Vibras 🎨", use_column_width=True)
         
         st.markdown("---")
-
