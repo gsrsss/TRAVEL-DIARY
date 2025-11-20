@@ -4,3 +4,4 @@ groq
 streamlit-drawable-canvas
 Pillow
 numpy
+streamlit==1.34.0
