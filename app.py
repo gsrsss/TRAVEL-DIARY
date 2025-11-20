@@ -88,7 +88,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- CABECERA DECORATIVA ---
-st.markdown("<h1 style='text-align: center;'>✈️ Travel Diary <span style='font-size: 0.6em; color: #81D4FA;'>⋆𐙚₊˚⊹♡</span></h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>✈️ Travel Diary ✈️", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; font-size: 1.1em;'>☁️ Guarda tus recuerdos más dulces en este diario digital ☁️</p>", unsafe_allow_html=True)
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True) # Separador Washi Tape
 
@@ -289,3 +289,4 @@ for e in reversed(get_entries()):
             c2.image(e['doodle_path'], caption="Mis Vibras 🎨", use_column_width=True)
         
         st.markdown("---")
+
