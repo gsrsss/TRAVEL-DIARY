@@ -24,45 +24,63 @@ notes = st.text_area("Escribe tus notas o experiencias")
 # --- SECCIÓN DE FOTO Y DIBUJO ---
 st.subheader("📸 Sube una foto y dibuja")
 uploaded_file = st.file_uploader("Elige una imagen:", type=["png", "jpg", "jpeg"])
-final_image_to_save = None # Variable para guardar la imagen final
+final_image_to_save = None 
 
 if uploaded_file:
-    # Abrimos la imagen original
+    # 1. Abrimos la imagen original
     image = Image.open(uploaded_file).convert("RGBA")
     
-    # Configuramos el lienzo de dibujo
-    st.write("🎨 ¡Dibuja o marca tu ruta encima de la foto!")
+    # 2. Ajuste inteligente de tamaño para pantalla
+    # Si la foto es gigante (mayor a 800px), la reducimos solo para el editor
+    # (Esto arregla el problema de que la foto no se vea de fondo)
+    max_width = 800
+    if image.width > max_width:
+        ratio = max_width / image.width
+        new_height = int(image.height * ratio)
+        display_image = image.resize((max_width, new_height))
+    else:
+        display_image = image
+
+    # 3. Controles de Dibujo (Color y Tamaño)
+    col_draw1, col_draw2 = st.columns(2)
+    with col_draw1:
+        stroke_color = st.color_picker("🎨 Color del pincel:", "#FF0000")
+    with col_draw2:
+        stroke_width = st.slider("✏️ Grosor del pincel:", 1, 25, 5)
+
+    st.write("¡Dibuja o marca tu ruta encima de la foto!")
     
-    # El componente st_canvas
+    # 4. El componente Lienzo (Canvas)
     canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.3)", 
-        stroke_width=5,
-        stroke_color="#FF0000", # Color rojo por defecto
-        background_image=image, # La foto subida es el fondo
+        fill_color="rgba(255, 165, 0, 0.3)",
+        stroke_width=stroke_width,  # Usamos el valor del slider
+        stroke_color=stroke_color,  # Usamos el valor del color picker
+        background_image=display_image, # Usamos la imagen ajustada
         update_streamlit=True,
-        height=400, # Altura del editor
+        height=display_image.height, # Altura exacta de la imagen
+        width=display_image.width,   # Ancho exacto de la imagen
         drawing_mode="freedraw",
         key="canvas",
     )
 
-    # Lógica para combinar el dibujo con la foto original
+    # 5. Lógica para guardar (Fusionar dibujo con imagen ORIGINAL)
     if canvas_result.image_data is not None:
-        # Obtenemos los trazos del dibujo
+        # Obtenemos el dibujo
         drawing_data = canvas_result.image_data.astype("uint8")
         drawing_image = Image.fromarray(drawing_data, "RGBA")
         
-        # IMPORTANTE: Redimensionar el dibujo al tamaño de la foto original para que coincidan
+        # Si usamos la imagen reducida para mostrar, aquí estiramos el dibujo
+        # para que coincida con la foto original de alta calidad
         if drawing_image.size != image.size:
-            drawing_image = drawing_image.resize(image.size)
+            drawing_image = drawing_image.resize(image.size, resample=Image.NEAREST)
             
-        # Fusionar foto + dibujo
+        # Fusionamos
         combined_image = Image.alpha_composite(image, drawing_image)
         final_image_to_save = combined_image
 
 # --- BOTÓN DE GUARDAR ---
 if st.button("Guardar entrada"):
     if location and notes:
-        # Llamamos a la nueva función save_entry que ahora acepta imagen
         save_entry(str(date), location, notes, final_image_to_save)
         st.success("¡Entrada guardada con foto y dibujo!")
     else:
@@ -82,18 +100,14 @@ if st.button("✨ Generar relato con IA"):
 st.header("📚 Tu diario")
 
 entries = get_entries()
-# Mostramos las entradas más recientes primero (invertimos la lista)
 for e in reversed(entries):
     with st.expander(f"{e['date']} — {e['location']}"):
         st.write(e["text"])
-        
-        # Si hay imagen guardada, la mostramos
         if e.get("image_path"):
             try:
                 st.image(e["image_path"], caption="Recuerdo guardado")
             except:
                 st.write("🖼️ (Imagen no disponible)")
-        
         st.write("---")
 
 # --- SECCIÓN 3: RECOMENDACIONES ---
@@ -103,7 +117,3 @@ if st.button("Ver recomendaciones"):
     if place:
         recs = get_recommendations(place)
         st.write(recs)
-    if place:
-        recs = get_recommendations(place)
-        st.write(recs)
-
