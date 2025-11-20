@@ -16,9 +16,12 @@ st.markdown("""
     /* Importar Fuentes de Google */
     @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;700&display=swap');
 
-    /* Fondo General (Color Papel Crema) */
+    /* Fondo General (Color Papel Crema con Líneas de Cuaderno) */
     .stApp {
-        background-color: #FFF9F0;
+        background-color: #FFF9F0; /* Fondo base crema */
+        background-image: 
+            linear-gradient(to bottom, #FFE0EC 1px, transparent 1px); /* Líneas horizontales rosa */
+        background-size: 100% 25px; /* Altura de cada línea (ej. 25px) */
         font-family: 'Quicksand', sans-serif;
     }
 
@@ -106,7 +109,6 @@ def get_font(size):
 # --- SECCIÓN 1: CREAR ENTRADA & IA ---
 st.markdown("### 🌸 1. Nuevo Recuerdo")
 
-# Contenedor visual estilo tarjeta
 with st.container():
     col1, col2 = st.columns(2)
     with col1:
@@ -116,13 +118,10 @@ with st.container():
 
     notes = st.text_area("💌 Querido diario... (Escribe tus notas aquí)")
     
-    # --- CAMBIO: MAGIA IA AQUÍ ---
-    # Colocamos un botón pequeño justo debajo de las notas
     if st.button("✨ Embellecer mis notas con Magia IA"):
         if location and notes:
             with st.spinner("La IA está leyendo tu diario... 🐇"):
                 try:
-                    # Generamos la historia y la mostramos en una cajita bonita
                     story_result = generate_story(location, notes)
                     st.success("¡Aquí tienes una versión literaria de tu día!")
                     st.markdown(f"""
@@ -130,7 +129,7 @@ with st.container():
                     {story_result}
                     </div>
                     """, unsafe_allow_html=True)
-                except: st.error("La IA está durmiendo...")
+                except: st.error("Oops! La IA está durmiendo...")
         else:
             st.warning("Escribe algo en las notas primero para que la IA pueda trabajar 💕")
 
@@ -145,7 +144,6 @@ memory_title = st.text_input("🏷️ Título de la foto:", placeholder="Ej. Com
 if 'memory_image' not in st.session_state:
     st.session_state.memory_image = None
 
-# Cargar imagen nueva
 if uploaded_memory_photo:
     uploaded_memory_photo.seek(0)
     if st.session_state.memory_image is None: 
@@ -159,7 +157,7 @@ if st.session_state.memory_image:
         st.image(st.session_state.memory_image, caption=memory_title if memory_title else "Tu Recuerdo", use_column_width=True)
 
     with col_tools:
-        st.info("👈 ¡Usa el menú para decorar tu foto! ദ്ദി◝ ⩊ ◜.ᐟ")
+        st.info("¡Hora de poner stickers y hacerla aún más tú! 💖") # Texto de info cute
         with st.expander("✨ Abrir Caja de Stickers", expanded=True):
             
             mode = st.radio("Modo:", ["Símbolos", "Texto"], horizontal=True)
@@ -212,25 +210,23 @@ if st.session_state.memory_image:
             st.experimental_rerun()
 
 else:
-    st.info("Waiting for a photo... 📷")
+    st.info("¡Sube una foto para empezar a decorarla! 📸") # Texto de info cute
 
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True)
 
 # --- SECCIÓN 3: DOODLE SPACE (CENTRADO) ---
 st.markdown("### 🎨 3. Doodle Space")
-st.caption("Dibuja las vibras de tu viaje (Abstracto, Colores, Formas...)")
+st.caption("Dibuja las vibras de tu viaje (Abstracto, Colores, Formas...) ✨") # Caption más cute
 
 # 1. Controles
 cd1, cd2, cd3 = st.columns(3)
-doodle_bg = cd1.color_picker("Fondo", "#FFF0F5") # Rosa muy pálido por defecto
-brush_col = cd2.color_picker("Pincel", "#81D4FA") # Azul pastel
+doodle_bg = cd1.color_picker("Fondo", "#FFF0F5") 
+brush_col = cd2.color_picker("Pincel", "#81D4FA") 
 brush_sz = cd3.slider("Grosor", 1, 10, 3)
 
 st.write(" ") # Espacio extra
 
-# 2. CAMBIO: CANVAS CENTRADO USANDO COLUMNAS
-# Creamos 3 columnas: [Espacio Vacío] [CANVAS GRANDE] [Espacio Vacío]
-# Ajustamos el ratio (e.g., 1:3:1) para que el centro sea ancho
+# 2. CANVAS CENTRADO USANDO COLUMNAS
 c_pad1, c_canvas, c_pad2 = st.columns([1, 3, 1])
 
 with c_canvas:
@@ -242,7 +238,7 @@ with c_canvas:
         background_image=None, 
         update_streamlit=True,
         height=400,
-        width=700, # El ancho fijo del canvas
+        width=700, 
         drawing_mode="freedraw",
         key="doodle_cv",
     )
@@ -250,7 +246,6 @@ with c_canvas:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- GUARDAR ---
-# Centramos también el botón de guardar para que se vea simétrico
 col_save_pad, col_save_btn, col_save_pad2 = st.columns([2, 2, 2])
 
 with col_save_btn:
@@ -270,24 +265,23 @@ with col_save_btn:
 
             save_entry(str(date), location, notes, mem_img, doo_img, memory_title)
             st.balloons() 
-            st.success("¡Guardado con éxito! ✨")
+            st.success("¡Guardado con éxito! ✨ Hora de crear nuevos recuerdos. 💕") # Mensaje de éxito cute
             st.session_state.memory_image = None
         else:
-            st.warning("⚠️ Faltan datos (Lugar o Notas)")
+            st.warning("⚠️ Faltan datos importantes (como el Lugar o tus Notas). ¡No olvides rellenarlos! 🥺") # Warning cute
 
 # --- EXTRAS & RECOMENDACIONES ---
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True)
 st.markdown("### 🌍 Próxima Aventura")
 
-# Centrar buscador de recomendaciones
 col_rec1, col_rec2 = st.columns([3, 1])
 with col_rec1:
     dest = st.text_input("¿A dónde soñamos ir?", placeholder="Ej: París, Bali, Cusco...", label_visibility="collapsed")
 with col_rec2:
     if st.button("🔍 Buscar ideas"):
         if dest:
-            try: st.info(get_recommendations(dest))
-            except: st.error("Error buscando")
+            try: st.info(f"¡Qué buena idea! Aquí tienes algunas ideas para tu viaje a {dest}...") # Info cute
+            except: st.error("Oopsie! No pude encontrar recomendaciones ahora mismo. ¿Pruebas otra vez? 😅") # Error cute
 
 # --- HISTORIAL ---
 st.markdown("<br><h2 style='text-align: center;'>📚 Mi Colección de Recuerdos</h2>", unsafe_allow_html=True)
