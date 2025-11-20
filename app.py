@@ -4,16 +4,13 @@ from streamlit_drawable_canvas import st_canvas
 import io 
 import os
 
-# Importaciones locales
 from diary_logic import save_entry, get_entries
 from travel_api import generate_story, get_recommendations
 
-# --- Configuración de la página ---
 st.set_page_config(layout="wide") 
-st.title("📘 Travel Diary – Diario de Viajes IA")
-st.write("Guarda tus experiencias, fotos y recuerdos.")
+st.title("Travel Diary ⋆𐙚₊˚⊹♡")
+st.write("Guarda tus experiencias, fotos y recuerdos de tus viajes facilmente, y mantenlo siempre junto a ti con esta app!")
 
-# --- FUNCIÓN AUXILIAR PARA FUENTES ---
 def get_font(size):
     """Intenta cargar una fuente del sistema que permita cambiar el tamaño."""
     font_names = ["arial.ttf", "Verdana.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf", "msyh.ttc"]
@@ -22,7 +19,6 @@ def get_font(size):
             return ImageFont.truetype(name, size)
         except:
             continue
-    # Si falla todo, usa la default (pero avisamos que será pequeña)
     return ImageFont.load_default()
 
 # --- SECCIÓN 1: CREAR ENTRADA ---
@@ -196,3 +192,4 @@ dest = st.text_input("¿Próximo destino?")
 if st.button("Buscar") and dest:
     try: st.write(get_recommendations(dest))
     except: st.error("Error buscando")
+
