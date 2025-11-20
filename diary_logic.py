@@ -9,8 +9,12 @@ load_dotenv()
 DATA_PATH = "data/diary.json"
 IMAGES_DIR = "data/images"
 
-# Configurar cliente de Groq (Asegúrate de tener GROQ_API_KEY en .env)
+# Configurar cliente de Groq
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+# --- VARIABLE GLOBAL CON EL MODELO NUEVO ---
+# Este es el cambio clave: Usamos el modelo más reciente
+CURRENT_MODEL = "llama-3.3-70b-versatile" 
 
 # --- FUNCIONES DE BASE DE DATOS ---
 
@@ -49,7 +53,7 @@ def save_entry(date, location, text, mem_img=None, doo_img=None, mem_title="", k
 
 def get_entries(): return load_diary()
 
-# --- FUNCIONES DE INTELIGENCIA ARTIFICIAL (IA) ---
+# --- FUNCIONES DE IA (ACTUALIZADAS CON EL NUEVO MODELO) ---
 
 def generate_story(location, notes):
     try:
@@ -58,7 +62,7 @@ def generate_story(location, notes):
                 {"role": "system", "content": "Eres un escritor de viajes poético. Escribe un párrafo corto y bonito estilo diario."},
                 {"role": "user", "content": f"Lugar: {location}. Notas: {notes}"}
             ],
-            model="llama3-8b-8192",
+            model=CURRENT_MODEL, # <--- MODELO ACTUALIZADO
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
@@ -71,7 +75,7 @@ def get_recommendations(place):
                 {"role": "system", "content": "Eres un experto en viajes 'aesthetic'. Da 3 recomendaciones cortas y únicas con emojis."},
                 {"role": "user", "content": f"Recomiéndame qué hacer en {place}"}
             ],
-            model="llama3-8b-8192",
+            model=CURRENT_MODEL, # <--- MODELO ACTUALIZADO
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
@@ -84,7 +88,7 @@ def analyze_emotion(text):
                 {"role": "system", "content": "Analiza el texto y responde con UNA SOLA palabra en español que describa la emoción principal (Ej: Alegría, Calma, Magia)."},
                 {"role": "user", "content": text}
             ],
-            model="llama3-8b-8192",
+            model=CURRENT_MODEL, # <--- MODELO ACTUALIZADO
             temperature=0.5,
         )
         return chat_completion.choices[0].message.content.strip()
