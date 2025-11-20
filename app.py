@@ -10,7 +10,26 @@ from diary_logic import save_entry, get_entries, generate_story, get_recommendat
 # --- ⚠️ CONFIGURACIÓN INICIAL (SIEMPRE PRIMERO) ---
 st.set_page_config(page_title="Travel Diary", layout="wide", page_icon="🎀")
 
-# --- ESTILOS CSS PERSONALIZADOS (THEME CUTE) ---
+# --- OPTIMIZACIÓN 1: CACHÉ DE FUENTES ---
+# Esto evita que Python busque la fuente en el disco cada vez que mueves un slider.
+@st.cache_resource
+def get_font(size):
+    font_names = ["arial.ttf", "Verdana.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf", "msyh.ttc"]
+    for name in font_names:
+        try: return ImageFont.truetype(name, size)
+        except: continue
+    return ImageFont.load_default()
+
+# --- OPTIMIZACIÓN 2: FUNCIÓN PARA REDIMENSIONAR ---
+# Reduce la imagen al cargarla para que la app no se trabe con fotos 4K.
+def resize_image(image, max_width=800):
+    if image.width > max_width:
+        ratio = max_width / image.width
+        new_height = int(image.height * ratio)
+        return image.resize((max_width, new_height), Image.Resampling.LANCZOS)
+    return image
+
+# --- ESTILOS CSS (THEME CUTE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;700&display=swap');
@@ -97,15 +116,6 @@ st.markdown("<h1 style='text-align: center;'>✈️ Travel Diary ✈️", unsafe
 st.markdown("<p style='text-align: center; font-size: 1.1em;'>☁️ Guarda tus recuerdos más dulces en este diario digital ☁️</p>", unsafe_allow_html=True)
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True) 
 
-# --- UTILIDADES ---
-
-def get_font(size):
-    font_names = ["arial.ttf", "Verdana.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf", "msyh.ttc"]
-    for name in font_names:
-        try: return ImageFont.truetype(name, size)
-        except: continue
-    return ImageFont.load_default()
-
 # --- SECCIÓN 1: CREAR ENTRADA ---
 st.markdown("### 🌸 1. Nuevo Recuerdo")
 
@@ -121,7 +131,7 @@ with st.container():
 
     notes = st.text_area("💌 Querido diario... (Escribe tus notas aquí)")
     
-    # --- BOTÓN IA (Debajo de notas) ---
+    # --- BOTÓN IA ---
     if st.button("✨ Embellecer y Detectar Emociones"):
         if location and notes:
             with st.spinner("La IA está sintiendo tus vibras... 🐇"):
@@ -155,9 +165,16 @@ memory_title = st.text_input("🏷️ Título de la foto:", placeholder="Ej. Com
 if 'memory_image' not in st.session_state: st.session_state.memory_image = None
 
 if uploaded_memory_photo:
+    # OPTIMIZACIÓN: Solo procesar si cambió el archivo o no está cargado
     uploaded_memory_photo.seek(0)
-    if st.session_state.memory_image is None: 
-         st.session_state.memory_image = Image.open(uploaded_memory_photo)
+    # Usamos un identificador simple para evitar recargar la misma imagen
+    file_id = f"processed_{uploaded_memory_photo.name}"
+    
+    if st.session_state.memory_image is None or st.session_state.get("last_file_id") != file_id:
+         raw_image = Image.open(uploaded_memory_photo)
+         # AQUÍ REDIMENSIONAMOS LA IMAGEN PARA QUE NO PESE Y LA APP VUELE
+         st.session_state.memory_image = resize_image(raw_image)
+         st.session_state.last_file_id = file_id
 
 if st.session_state.memory_image:
     col_img, col_tools = st.columns([1, 1])
@@ -186,6 +203,7 @@ if st.session_state.memory_image:
             if st.button("✅ Pegar Sticker"):
                 img_copy = st.session_state.memory_image.copy().convert("RGBA")
                 draw = ImageDraw.Draw(img_copy)
+                # Usamos la función cacheada get_font
                 font = get_font(stamp_size)
                 img_w, img_h = img_copy.size
                 x_px = int((x_pos_pct / 100) * img_w)
@@ -199,16 +217,16 @@ if st.session_state.memory_image:
                 draw.text((final_x, final_y), text_to_stamp, font=font, fill=stamp_color)
                 st.session_state.memory_image = img_copy
                 st.success("¡Qué lindo!")
-                st.experimental_rerun() 
+                st.rerun() # st.rerun es más rápido y moderno que experimental_rerun
         if st.button("🗑️ Limpiar foto"):
             st.session_state.memory_image = None
-            st.experimental_rerun()
+            st.rerun()
 else:
     st.info("¡Sube una foto para empezar a decorarla! 📸")
 
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True)
 
-# --- SECCIÓN 3: DOODLE SPACE (CENTRADO) ---
+# --- SECCIÓN 3: DOODLE SPACE ---
 st.markdown("### 🎨 3. Doodle Space")
 st.caption("Dibuja las vibras de tu viaje ✨")
 
@@ -221,6 +239,7 @@ st.write(" ")
 c_pad1, c_canvas, c_pad2 = st.columns([1, 3, 1])
 
 with c_canvas:
+    # El canvas se redibuja a menudo, asegúrate de no cargar imágenes de fondo pesadas aquí
     doodle_res = st_canvas(
         fill_color="rgba(0,0,0,0)",
         stroke_width=brush_sz,
@@ -260,21 +279,20 @@ with col_save_btn:
             st.success("¡Guardado con éxito! ✨")
             st.session_state.memory_image = None
             st.session_state.current_keyword = ""
+            st.rerun() # Refrescar para ver la entrada nueva abajo
         else:
             st.warning("⚠️ Faltan datos importantes 🥺")
 
-# --- EXTRAS (RECOMENDACIONES ABAJO) ---
+# --- EXTRAS ---
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True)
 st.markdown("### 🌍 Próxima Aventura")
 
-# Columnas SOLO para el input y botón
 col_rec1, col_rec2 = st.columns([3, 1])
 with col_rec1:
     dest = st.text_input("¿A dónde soñamos ir?", placeholder="Ej: París...", label_visibility="collapsed")
 with col_rec2:
     search_click = st.button("🔍 Buscar ideas", use_container_width=True)
 
-# Resultado FUERA de columnas (para que salga abajo)
 if search_click:
     if dest:
         with st.spinner("Consultando al oráculo viajero... 🔮"):
@@ -290,10 +308,21 @@ if search_click:
             except Exception as e: 
                 st.error(f"Oopsie! {e}")
 
-# --- HISTORIAL ---
+# --- HISTORIAL OPTIMIZADO ---
 st.markdown("<br><h2 style='text-align: center;'>📚 Mi Colección de Recuerdos</h2>", unsafe_allow_html=True)
 
-for e in reversed(get_entries()):
+# OPTIMIZACIÓN 3: PAGINACIÓN BÁSICA
+# Si tienes 100 fotos, cargar todas bloquea la app. 
+# Cargamos solo las últimas 5 por defecto.
+if 'history_limit' not in st.session_state:
+    st.session_state.history_limit = 5
+
+all_entries = get_entries()
+total_entries = len(all_entries)
+# Obtenemos los últimos X elementos
+visible_entries = all_entries[-st.session_state.history_limit:]
+
+for e in reversed(visible_entries):
     with st.container():
         kw_display = e.get('keyword') if e.get('keyword') else "Recuerdo ✨"
         st.markdown(f"""
@@ -308,9 +337,16 @@ for e in reversed(get_entries()):
         """, unsafe_allow_html=True)
         
         c1, c2 = st.columns(2)
-        if e.get('memory_path'): 
+        # Streamlit carga imágenes perezosamente, pero limitar la cantidad ayuda mucho
+        if e.get('memory_path') and os.path.exists(e.get('memory_path')): 
             c1.image(e['memory_path'], caption=e.get('memory_title', 'Recuerdo'), use_column_width=True)
-        if e.get('doodle_path'): 
+        if e.get('doodle_path') and os.path.exists(e.get('doodle_path')): 
             c2.image(e['doodle_path'], caption="Mis Vibras 🎨", use_column_width=True)
         
         st.markdown("---")
+
+# Botón para cargar más recuerdos si hay más de los que mostramos
+if total_entries > st.session_state.history_limit:
+    if st.button(f"Cargar recuerdos anteriores ({total_entries - st.session_state.history_limit} más)"):
+        st.session_state.history_limit += 5
+        st.rerun()
