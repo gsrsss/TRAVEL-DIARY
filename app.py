@@ -4,10 +4,13 @@ from streamlit_drawable_canvas import st_canvas
 import io 
 import os
 
-from diary_logic import save_entry, get_entries
-# Asegúrate de que estas funciones existan en tu travel_api.py
-from travel_api import generate_story, get_recommendations, analyze_emotion 
+# --- CORRECCIÓN IMPORTANTE AQUÍ ---
+# Importamos TODAS las funciones desde diary_logic.py
+# Ya no usamos travel_api porque unificamos todo.
+from diary_logic import save_entry, get_entries, generate_story, get_recommendations, analyze_emotion
 
+# --- CONFIGURACIÓN INICIAL ---
+st.set_page_config(page_title="Travel Diary", layout="wide", page_icon="🎀")
 # --- CONFIGURACIÓN INICIAL ---
 st.set_page_config(page_title="Travel Diary", layout="wide", page_icon="🎀")
 
@@ -314,3 +317,4 @@ for e in reversed(get_entries()):
             c2.image(e['doodle_path'], caption="Mis Vibras 🎨", use_column_width=True)
         
         st.markdown("---")
+
