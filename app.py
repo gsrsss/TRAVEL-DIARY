@@ -27,21 +27,26 @@ uploaded_file = st.file_uploader("Elige una imagen:", type=["png", "jpg", "jpeg"
 final_image_to_save = None 
 
 if uploaded_file:
-    # 1. Abrimos la imagen original
+    # 1. Abrimos la imagen original (Mantenemos RGBA para guardar con calidad)
     image = Image.open(uploaded_file).convert("RGBA")
     
     # 2. Ajuste inteligente de tamaño para pantalla
-    # Si la foto es gigante (mayor a 800px), la reducimos solo para el editor
-    # (Esto arregla el problema de que la foto no se vea de fondo)
     max_width = 800
     if image.width > max_width:
         ratio = max_width / image.width
         new_height = int(image.height * ratio)
         display_image = image.resize((max_width, new_height))
     else:
-        display_image = image
+        display_image = image.copy()
 
-    # 3. Controles de Dibujo (Color y Tamaño)
+    # --- CORRECCIÓN 1: Quitar transparencia para visualización ---
+    # A veces el canvas falla al mostrar fondos RGBA. Lo pasamos a RGB solo para verlo.
+    if display_image.mode == "RGBA":
+        bg_image_for_canvas = display_image.convert("RGB")
+    else:
+        bg_image_for_canvas = display_image
+
+    # 3. Controles de Dibujo
     col_draw1, col_draw2 = st.columns(2)
     with col_draw1:
         stroke_color = st.color_picker("🎨 Color del pincel:", "#FF0000")
@@ -50,27 +55,30 @@ if uploaded_file:
 
     st.write("¡Dibuja o marca tu ruta encima de la foto!")
     
+    # --- CORRECCIÓN 2: Llave dinámica ---
+    # Usamos el nombre del archivo en la 'key'. Esto fuerza al componente a 
+    # reiniciarse por completo cuando cambias de foto.
+    canvas_key = f"canvas_{uploaded_file.name}"
+
     # 4. El componente Lienzo (Canvas)
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)",
-        stroke_width=stroke_width,  # Usamos el valor del slider
-        stroke_color=stroke_color,  # Usamos el valor del color picker
-        background_image=display_image, # Usamos la imagen ajustada
+        stroke_width=stroke_width,
+        stroke_color=stroke_color,
+        background_image=bg_image_for_canvas, # Usamos la versión RGB segura
         update_streamlit=True,
-        height=display_image.height, # Altura exacta de la imagen
-        width=display_image.width,   # Ancho exacto de la imagen
+        height=bg_image_for_canvas.height,
+        width=bg_image_for_canvas.width,
         drawing_mode="freedraw",
-        key="canvas",
+        key=canvas_key, # Llave única por foto
     )
 
     # 5. Lógica para guardar (Fusionar dibujo con imagen ORIGINAL)
     if canvas_result.image_data is not None:
-        # Obtenemos el dibujo
         drawing_data = canvas_result.image_data.astype("uint8")
         drawing_image = Image.fromarray(drawing_data, "RGBA")
         
-        # Si usamos la imagen reducida para mostrar, aquí estiramos el dibujo
-        # para que coincida con la foto original de alta calidad
+        # Redimensionamos el dibujo al tamaño real de la foto original
         if drawing_image.size != image.size:
             drawing_image = drawing_image.resize(image.size, resample=Image.NEAREST)
             
