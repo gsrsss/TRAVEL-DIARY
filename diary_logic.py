@@ -1,9 +1,19 @@
 import json
 import os
 import uuid
+from groq import Groq
+from dotenv import load_dotenv
 
+# --- CONFIGURACIÓN INICIAL ---
+load_dotenv()
 DATA_PATH = "data/diary.json"
 IMAGES_DIR = "data/images"
+
+# Configurar cliente de Groq
+# Asegúrate de tener tu GROQ_API_KEY en el archivo .env
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+# --- FUNCIONES DE BASE DE DATOS (JSON) ---
 
 def load_diary():
     if not os.path.exists(DATA_PATH): return []
@@ -19,7 +29,6 @@ def _save_image(image_obj, prefix, location):
     image_obj.save(path, "PNG")
     return path
 
-# --- CAMBIO: Agregamos 'keyword' ---
 def save_entry(date, location, text, mem_img=None, doo_img=None, mem_title="", keyword=""):
     diary = load_diary()
     
@@ -28,7 +37,7 @@ def save_entry(date, location, text, mem_img=None, doo_img=None, mem_title="", k
         "date": str(date),
         "location": location,
         "text": text,
-        "keyword": keyword, # <--- Guardamos la emoción
+        "keyword": keyword,
         "memory_title": mem_title,
         "memory_path": _save_image(mem_img, "mem", location),
         "doodle_path": _save_image(doo_img, "doo", location)
@@ -40,3 +49,68 @@ def save_entry(date, location, text, mem_img=None, doo_img=None, mem_title="", k
         json.dump(diary, f, ensure_ascii=False, indent=4)
 
 def get_entries(): return load_diary()
+
+
+# --- FUNCIONES DE INTELIGENCIA ARTIFICIAL (IA) ---
+
+def generate_story(location, notes):
+    """Genera una historia bonita basada en las notas."""
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Eres un escritor de viajes poético y nostálgico. Escribe un párrafo corto, bonito y estético (estilo diario) basado en las notas del usuario."
+                },
+                {
+                    "role": "user",
+                    "content": f"Lugar: {location}. Notas: {notes}",
+                }
+            ],
+            model="llama3-8b-8192",
+        )
+        return chat_completion.choices[0].message.content
+    except Exception as e:
+        return f"No pude escribir la historia hoy... ({str(e)})"
+
+def get_recommendations(place):
+    """Da recomendaciones de viaje."""
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Eres un guía de viajes experto y 'aesthetic'. Da 3 recomendaciones cortas y únicas para visitar en el lugar que te digan. Usa emojis."
+                },
+                {
+                    "role": "user",
+                    "content": f"Recomiéndame qué hacer en {place}",
+                }
+            ],
+            model="llama3-8b-8192",
+        )
+        return chat_completion.choices[0].message.content
+    except Exception as e:
+        return f"No encontré recomendaciones... ({str(e)})"
+
+def analyze_emotion(text):
+    """Detecta la emoción principal y devuelve UNA sola palabra."""
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Analiza el siguiente texto y responde con UNA SOLA palabra en español que describa la emoción principal o 'vibe' del viaje (Ej: Nostalgia, Alegría, Paz, Caos). No uses frases."
+                },
+                {
+                    "role": "user",
+                    "content": text,
+                }
+            ],
+            model="llama3-8b-8192",
+            temperature=0.5,
+        )
+        return chat_completion.choices[0].message.content.strip()
+    except:
+        # Fallback si falla la API
+        return "Aventura ✨"
