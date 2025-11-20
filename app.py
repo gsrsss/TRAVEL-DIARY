@@ -27,78 +27,78 @@ uploaded_file = st.file_uploader("Elige una imagen:", type=["png", "jpg", "jpeg"
 final_image_to_save = None 
 
 if uploaded_file:
-    # 1. Cargar imagen y guardar copia original
+    # 1. Cargar imagen
     original_image = Image.open(uploaded_file)
     
-    # 2. PREPARAR IMAGEN PARA EL CANVAS (SOLUCIÓN DEFINITIVA)
-    # Forzamos 'RGB' puro. Esto elimina transparencias que rompen el visor.
-    if original_image.mode != "RGB":
-        canvas_image = original_image.convert("RGB")
-    else:
-        canvas_image = original_image.copy()
-
-    # 3. Redimensionar si es muy grande (para que quepa en pantalla)
+    # 2. Ajustar imagen para pantalla (Max 700px)
+    # Esto es crucial para que no se desborde la memoria del navegador
     max_width = 700
-    original_width, original_height = canvas_image.size
-    
-    if original_width > max_width:
-        ratio = max_width / original_width
-        new_height = int(original_height * ratio)
-        canvas_image = canvas_image.resize((max_width, new_height))
-    
-    # Obtener dimensiones finales exactas
-    canvas_width = canvas_image.width
-    canvas_height = canvas_image.height
+    if original_image.width > max_width:
+        ratio = max_width / original_image.width
+        new_height = int(original_image.height * ratio)
+        # Usamos RGBA para asegurar compatibilidad con el canvas
+        canvas_image = original_image.resize((max_width, new_height)).convert("RGBA")
+    else:
+        canvas_image = original_image.convert("RGBA")
 
-    # 4. Controles de Dibujo
+    # --- DEBUG VISUAL ---
+    # Esto te muestra que la imagen SÍ se cargó en memoria.
+    # Si ves esta imagen pequeña pero no la grande de abajo, es un tema del navegador.
+    st.caption("Vista previa de la imagen cargada:")
+    st.image(canvas_image, width=150) 
+    # --------------------
+
+    # 3. Controles de Dibujo
     col_draw1, col_draw2 = st.columns(2)
     with col_draw1:
         stroke_color = st.color_picker("🎨 Color del pincel:", "#FF0000")
     with col_draw2:
         stroke_width = st.slider("✏️ Grosor del pincel:", 1, 25, 5)
 
-    st.write("¡Dibuja o marca tu ruta encima de la foto!")
+    st.write("👇 ¡Dibuja aquí abajo!")
 
-    # 5. EL LIENZO (CANVAS)
-    # Usamos una key única combinada para forzar recarga si cambia la imagen
+    # 4. EL LIENZO (CANVAS)
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)", 
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_color="#FFFFFF", # Fondo base por si acaso
-        background_image=canvas_image, # Aquí va la imagen convertida a RGB
+        background_color="#eeeeee", # Fondo GRIS para ver si el canvas carga
+        background_image=canvas_image, # La imagen procesada
         update_streamlit=True,
-        height=canvas_height,
-        width=canvas_width,
+        height=canvas_image.height,
+        width=canvas_image.width,
         drawing_mode="freedraw",
-        key=f"canvas_{uploaded_file.name}", # Key dinámica
+        key=f"canvas_{uploaded_file.name}", # Llave única para forzar recarga
     )
 
-    # 6. GUARDAR
+    # 5. PROCESAR GUARDADO
     if canvas_result.image_data is not None:
         # Recuperamos el dibujo
         drawing_data = canvas_result.image_data.astype("uint8")
         drawing_image = Image.fromarray(drawing_data, "RGBA")
         
-        # Ajustamos el dibujo al tamaño de la imagen ORIGINAL (la de alta calidad)
+        # Ajustamos el dibujo al tamaño de la imagen ORIGINAL
         if drawing_image.size != original_image.size:
             drawing_image = drawing_image.resize(original_image.size, resample=Image.NEAREST)
         
-        # Aseguramos que la original tenga canal alfa para poder pegarle el dibujo
+        # Preparamos la original para fusionar
         if original_image.mode != "RGBA":
-            final_composite = original_image.convert("RGBA")
+            base_for_merge = original_image.convert("RGBA")
         else:
-            final_composite = original_image.copy()
-
+            base_for_merge = original_image
+            
         # Fusionamos
-        final_composite = Image.alpha_composite(final_composite, drawing_image)
-        final_image_to_save = final_composite
+        final_image_to_save = Image.alpha_composite(base_for_merge, drawing_image)
 
 # --- BOTÓN DE GUARDAR ---
 if st.button("Guardar entrada"):
     if location and notes:
+        # Si no se dibujó nada pero hay foto, guardamos la foto original
+        if final_image_to_save is None and uploaded_file:
+            final_image_to_save = original_image
+            
         save_entry(str(date), location, notes, final_image_to_save)
-        st.success("¡Entrada guardada con foto y dibujo!")
+        st.success("¡Entrada guardada!")
     else:
         st.warning("Por favor escribe al menos el lugar y las notas.")
 
