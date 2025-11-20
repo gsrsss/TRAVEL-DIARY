@@ -152,4 +152,11 @@ for e in reversed(entries):
 # --- SECCIÓN 3: RECOMENDACIONES ---
 st.header("🌍 Recomendaciones")
 place = st.text_input("¿A dónde quieres ir ahora?")
-if st.
+if st.button("Ver recomendaciones"):
+    if place:
+        with st.spinner("Buscando destinos..."):
+            try:
+                recs = get_recommendations(place)
+                st.write(recs)
+            except Exception as e:
+                st.error(f"Error trayendo recomendaciones: {e}")
