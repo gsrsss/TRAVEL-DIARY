@@ -8,7 +8,7 @@ from diary_logic import save_entry, get_entries
 from travel_api import generate_story, get_recommendations
 
 # --- CONFIGURACIÓN INICIAL ---
-st.set_page_config(page_title="Travel Diary ⋆𐙚₊˚⊹♡", layout="wide", page_icon="🎀")
+st.set_page_config(page_title="Travel Diary", layout="wide", page_icon="🎀")
 
 # --- ESTILOS CSS PERSONALIZADOS (THEME CUTE) ---
 # Aquí sucede la magia visual. No toques esto a menos que sepas CSS.
@@ -143,7 +143,7 @@ if st.session_state.memory_image:
         st.image(st.session_state.memory_image, caption=memory_title if memory_title else "Tu Recuerdo", use_column_width=True)
 
     with col_tools:
-        st.info("👈 ¡Usa el menú para decorar tu foto!")
+        st.info("👈 ¡Usa el menú para decorar tu foto! ദ്ദി◝ ⩊ ◜.ᐟ")
         with st.expander("✨ Abrir Caja de Stickers", expanded=True):
             
             mode = st.radio("Modo:", ["Símbolos", "Texto"], horizontal=True)
@@ -289,4 +289,5 @@ for e in reversed(get_entries()):
             c2.image(e['doodle_path'], caption="Mis Vibras 🎨", use_column_width=True)
         
         st.markdown("---")
+
 
