@@ -1,0 +1,28 @@
+import json
+import os
+
+DATA_PATH = "data/diary.json"
+
+def load_diary():
+    if not os.path.exists(DATA_PATH):
+        return []
+    with open(DATA_PATH, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except:
+            return []
+
+def save_entry(date, location, text):
+    diary = load_diary()
+    new_entry = {
+        "date": date,
+        "location": location,
+        "text": text
+    }
+    diary.append(new_entry)
+
+    with open(DATA_PATH, "w", encoding="utf-8") as f:
+        json.dump(diary, f, ensure_ascii=False, indent=4)
+
+def get_entries():
+    return load_diary()
