@@ -4,14 +4,10 @@ from streamlit_drawable_canvas import st_canvas
 import io 
 import os
 
-# Importamos TODO desde diary_logic
 from diary_logic import save_entry, get_entries, generate_story, get_recommendations, analyze_emotion
 
-# --- ⚠️ CONFIGURACIÓN INICIAL (SIEMPRE PRIMERO) ---
 st.set_page_config(page_title="Travel Diary", layout="wide", page_icon="🎀")
 
-# --- OPTIMIZACIÓN 1: CACHÉ DE FUENTES ---
-# Esto evita que Python busque la fuente en el disco cada vez que mueves un slider.
 @st.cache_resource
 def get_font(size):
     font_names = ["arial.ttf", "Verdana.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf", "msyh.ttc"]
@@ -20,8 +16,6 @@ def get_font(size):
         except: continue
     return ImageFont.load_default()
 
-# --- OPTIMIZACIÓN 2: FUNCIÓN PARA REDIMENSIONAR ---
-# Reduce la imagen al cargarla para que la app no se trabe con fotos 4K.
 def resize_image(image, max_width=800):
     if image.width > max_width:
         ratio = max_width / image.width
@@ -29,7 +23,6 @@ def resize_image(image, max_width=800):
         return image.resize((max_width, new_height), Image.Resampling.LANCZOS)
     return image
 
-# --- ESTILOS CSS (THEME CUTE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;700&display=swap');
@@ -55,7 +48,7 @@ st.markdown("""
         color: #5D5D5D !important;
     }
 
-    /* Botones Cute */
+    /* Botones */
     .stButton>button {
         background-color: #FFC2D1 !important;
         color: white !important;
@@ -111,12 +104,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- CABECERA ---
 st.markdown("<h1 style='text-align: center;'>✈️ Travel Diary ✈️", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; font-size: 1.1em;'>☁️ Guarda tus recuerdos más dulces en este diario digital ☁️</p>", unsafe_allow_html=True)
 st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True) 
 
-# --- SECCIÓN 1: CREAR ENTRADA ---
 st.markdown("### 🌸 1. Nuevo Recuerdo")
 
 if 'current_keyword' not in st.session_state:
@@ -132,7 +123,7 @@ with st.container():
     notes = st.text_area("💌 Querido diario... (Escribe tus notas aquí)")
     
     # --- BOTÓN IA ---
-    if st.button("✨ Embellecer y Detectar Emociones"):
+    if st.button("✨ Embellecer Nota y Detectar Emociones"):
         if location and notes:
             with st.spinner("La IA está sintiendo tus vibras... 🐇"):
                 try:
@@ -159,8 +150,8 @@ st.markdown("<br>", unsafe_allow_html=True)
 # --- SECCIÓN 2: FOTO & STAMPS ---
 st.markdown("### 📸 2. Foto & Deco")
 
-uploaded_memory_photo = st.file_uploader("Sube tu foto favorita:", type=["png", "jpg", "jpeg"], key="memory_photo_uploader")
-memory_title = st.text_input("🏷️ Título de la foto:", placeholder="Ej. Comiendo Dango en Tokio 🍡")
+uploaded_memory_photo = st.file_uploader("Sube tu foto favorita de tu viaje:", type=["png", "jpg", "jpeg"], key="memory_photo_uploader")
+memory_title = st.text_input("Título de tu recuerdo:", placeholder="Ej. Comiendo Dango en Tokio 🍡")
 
 if 'memory_image' not in st.session_state: st.session_state.memory_image = None
 
@@ -182,7 +173,7 @@ if st.session_state.memory_image:
         st.image(st.session_state.memory_image, caption=memory_title if memory_title else "Tu Recuerdo", use_column_width=True)
 
     with col_tools:
-        st.info("¡Decora tu foto con stickers cute! 💖")
+        st.info("¡Decora tu foto con stickers! ദ്ദി◝ ⩊ ◜.ᐟ")
         with st.expander("✨ Abrir Caja de Stickers", expanded=True):
             mode = st.radio("Modo:", ["Símbolos", "Texto"], horizontal=True)
             c_stamp1, c_stamp2 = st.columns(2)
@@ -228,7 +219,7 @@ st.markdown("<div class='washi-tape'></div>", unsafe_allow_html=True)
 
 # --- SECCIÓN 3: DOODLE SPACE ---
 st.markdown("### 🎨 3. Doodle Space")
-st.caption("Dibuja las vibras de tu viaje ✨")
+st.caption("Dibuja algo emblematico de tu viaje")
 
 cd1, cd2, cd3 = st.columns(3)
 doodle_bg = cd1.color_picker("Fondo", "#FFF0F5") 
@@ -350,3 +341,4 @@ if total_entries > st.session_state.history_limit:
     if st.button(f"Cargar recuerdos anteriores ({total_entries - st.session_state.history_limit} más)"):
         st.session_state.history_limit += 5
         st.rerun()
+
