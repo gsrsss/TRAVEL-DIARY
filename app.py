@@ -1,6 +1,5 @@
 import streamlit as st
 from PIL import Image
-import numpy as np
 from streamlit_drawable_canvas import st_canvas
 
 # Importaciones locales
@@ -27,28 +26,31 @@ uploaded_file = st.file_uploader("Elige una imagen:", type=["png", "jpg", "jpeg"
 final_image_to_save = None 
 
 if uploaded_file:
-    # 1. Cargar imagen
+    # 1. Cargar imagen original
     original_image = Image.open(uploaded_file)
     
-    # 2. Ajustar imagen para pantalla (Max 700px)
-    # Esto es crucial para que no se desborde la memoria del navegador
-    max_width = 700
+    # 2. Ajustar imagen para pantalla (Max 600px)
+    max_width = 600
     if original_image.width > max_width:
         ratio = max_width / original_image.width
         new_height = int(original_image.height * ratio)
-        # Usamos RGBA para asegurar compatibilidad con el canvas
-        canvas_image = original_image.resize((max_width, new_height)).convert("RGBA")
+        # Usamos LANCZOS para que no pierda calidad al reducir
+        resized_image = original_image.resize((max_width, new_height), Image.Resampling.LANCZOS)
     else:
-        canvas_image = original_image.convert("RGBA")
+        resized_image = original_image.copy()
 
-    # --- DEBUG VISUAL ---
-    # Esto te muestra que la imagen SÍ se cargó en memoria.
-    # Si ves esta imagen pequeña pero no la grande de abajo, es un tema del navegador.
-    st.caption("Vista previa de la imagen cargada:")
-    st.image(canvas_image, width=150) 
-    # --------------------
+    # 3. TRUCO DE "SANITIZACIÓN" DE IMAGEN (IMPORTANTE)
+    # Creamos un lienzo nuevo RGB blanco y pegamos la foto encima.
+    # Esto elimina metadatos corruptos o canales alfa extraños que hacen la foto invisible.
+    canvas_image = Image.new("RGB", resized_image.size, (255, 255, 255))
+    
+    # Si la imagen tiene transparencia, la usamos como máscara para pegar
+    if resized_image.mode in ('RGBA', 'LA'):
+        canvas_image.paste(resized_image, mask=resized_image.split()[-1])
+    else:
+        canvas_image.paste(resized_image)
 
-    # 3. Controles de Dibujo
+    # 4. Controles de Dibujo
     col_draw1, col_draw2 = st.columns(2)
     with col_draw1:
         stroke_color = st.color_picker("🎨 Color del pincel:", "#FF0000")
@@ -57,21 +59,22 @@ if uploaded_file:
 
     st.write("👇 ¡Dibuja aquí abajo!")
 
-    # 4. EL LIENZO (CANVAS)
+    # 5. EL LIENZO (CANVAS)
     canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.3)", 
+        fill_color="rgba(255, 165, 0, 0.0)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_color="#eeeeee", # Fondo GRIS para ver si el canvas carga
-        background_image=canvas_image, # La imagen procesada
+        background_color="#FFFFFF",
+        background_image=canvas_image, # Usamos la imagen "limpia"
         update_streamlit=True,
         height=canvas_image.height,
         width=canvas_image.width,
         drawing_mode="freedraw",
-        key=f"canvas_{uploaded_file.name}", # Llave única para forzar recarga
+        # La llave única fuerza el redibujado si cambias de foto
+        key=f"canvas_{uploaded_file.name}", 
     )
 
-    # 5. PROCESAR GUARDADO
+    # 6. PROCESAR GUARDADO
     if canvas_result.image_data is not None:
         # Recuperamos el dibujo
         drawing_data = canvas_result.image_data.astype("uint8")
@@ -133,3 +136,7 @@ if st.button("Ver recomendaciones"):
     if place:
         recs = get_recommendations(place)
         st.write(recs)
+    if place:
+        recs = get_recommendations(place)
+        st.write(recs)
+
