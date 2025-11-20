@@ -1,3 +1,6 @@
 streamlit
-groq
 python-dotenv
+groq
+streamlit-drawable-canvas
+Pillow
+numpy
