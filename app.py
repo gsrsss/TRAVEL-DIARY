@@ -1,90 +1,177 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 from streamlit_drawable_canvas import st_canvas
+
+# Importaciones locales (Tus archivos originales)
 from diary_logic import save_entry, get_entries
-# from travel_api import generate_story, get_recommendations # Descomentar si usas la API
+from travel_api import generate_story, get_recommendations
 
-st.set_page_config(page_title="Travel Diary", layout="centered")
-st.title("📘 Travel Diary IA")
+st.set_page_config(page_title="Travel Diary", layout="wide")
+st.title("📘 Travel Diary – Diario de Viajes IA")
+st.write("Guarda tus experiencias, fotos y recuerdos. La IA te ayuda a escribirlas.")
 
-if 'mem_img' not in st.session_state: st.session_state.mem_img = None
+# Inicializar estado de sesión para la foto de recuerdo
+if 'mem_img' not in st.session_state:
+    st.session_state.mem_img = None
 
-# --- ENTRADA DE DATOS ---
-c1, c2 = st.columns(2)
-date = c1.date_input("Fecha")
-location = c2.text_input("Lugar")
-notes = st.text_area("Notas del viaje")
+# --- SECCIÓN 1: CREAR ENTRADA ---
+st.header("✍️ Agregar nuevo recuerdo")
 
-# --- 1. FOTO DE RECUERDO ---
-st.subheader("📸 Tu Recuerdo")
-uploaded = st.file_uploader("Sube una foto", type=["jpg", "png"], key="mem_up")
+col1, col2 = st.columns(2)
+with col1:
+    date = st.date_input("Fecha del viaje")
+with col2:
+    location = st.text_input("Lugar visitado")
 
-# --- CAMBIO AQUÍ: Input para el nombre de la foto ---
-mem_title = st.text_input("Título de este recuerdo (Opcional)", placeholder="Ej. Atardecer en Kioto")
+notes = st.text_area("Escribe tus notas o experiencias")
 
-if uploaded:
-    uploaded.seek(0)
-    st.session_state.mem_img = Image.open(uploaded)
+# --- SECCIÓN 2: FOTO DE RECUERDO (Solo visualización) ---
+st.subheader("📸 Sube una foto como recuerdo")
+uploaded_file = st.file_uploader("Elige una imagen:", type=["png", "jpg", "jpeg"], key="mem_uploader")
 
+# Input para el nombre único de la foto
+memory_title = st.text_input("Título de este recuerdo (Opcional)", placeholder="Ej. Atardecer increíble")
+
+if uploaded_file:
+    uploaded_file.seek(0) # Resetear puntero por seguridad
+    st.session_state.mem_img = Image.open(uploaded_file)
+
+# Mostrar la imagen si está cargada
 if st.session_state.mem_img:
-    st.image(st.session_state.mem_img, caption=mem_title if mem_title else "Vista previa", use_column_width=True)
+    st.image(st.session_state.mem_img, caption=memory_title if memory_title else "Foto de recuerdo", use_column_width=True)
 
-# --- 2. DOODLE SPACE ---
-st.subheader("🎨 Doodle Space & Vibes")
+
+# --- SECCIÓN 3: DOODLE SPACE (Vibras del viaje) ---
+st.subheader("🎨 Doodle Space: Ilustra las vibras")
+st.write("Dibuja y añade texto para capturar la esencia del viaje.")
+
+# Controles del Doodle
 dc1, dc2, dc3 = st.columns(3)
-bg_col = dc1.color_picker("Fondo", "#F0F2F6")
-brush_col = dc2.color_picker("Pincel", "#000000")
-width = dc3.slider("Grosor", 1, 20, 3)
+with dc1:
+    doodle_bg = st.color_picker("Fondo del Doodle", "#F0F2F6")
+with dc2:
+    brush_color = st.color_picker("Color Pincel", "#000000")
+with dc3:
+    stroke_width = st.slider("Grosor Pincel", 1, 20, 3)
 
-with st.expander("🔤 Añadir texto al dibujo"):
-    tc1, tc2, tc3 = st.columns([3,1,1])
-    txt_input = tc1.text_input("Texto")
-    txt_col = tc2.color_picker("Color Txt", "#FF0000")
-    txt_size = tc3.number_input("Tamaño", 10, 100, 20)
+# Herramienta de Texto sobre el Doodle
+with st.expander("🔤 Herramienta de Texto (Escribir sobre el dibujo)"):
+    tc1, tc2, tc3 = st.columns([3, 1, 1])
+    text_input = tc1.text_input("Texto a añadir")
+    text_color = tc2.color_picker("Color Texto", "#FF0000")
+    text_size = tc3.number_input("Tamaño Fuente", 10, 100, 20)
 
-canvas = st_canvas(
-    fill_color="rgba(0,0,0,0)", stroke_width=width, stroke_color=brush_col,
-    background_color=bg_col, height=400, width=700, drawing_mode="freedraw",
-    key="doodle_canvas"
+# El Canvas
+canvas_result = st_canvas(
+    fill_color="rgba(0, 0, 0, 0)",
+    stroke_width=stroke_width,
+    stroke_color=brush_color,
+    background_color=doodle_bg,
+    height=400,
+    width=700,
+    drawing_mode="freedraw",
+    key="doodle_canvas",
 )
 
-# --- GUARDADO ---
+# --- BOTÓN GUARDAR ---
 if st.button("💾 Guardar Entrada", type="primary"):
     if location and notes:
         final_doodle = None
-        if canvas.image_data is not None:
-            img = Image.fromarray(canvas.image_data.astype("uint8"), "RGBA")
-            if txt_input:
-                base = Image.new("RGBA", img.size, tuple(int(bg_col.lstrip('#')[i:i+2], 16) for i in (0,2,4)) + (255,))
-                draw = ImageDraw.Draw(base)
-                try: font = ImageFont.truetype("arial.ttf", txt_size)
-                except: font = ImageFont.load_default()
-                w_t, h_t = draw.textsize(txt_input, font=font) if hasattr(draw, 'textsize') else (0,0) 
-                draw.text(((img.width-w_t)/2, (img.height-h_t)/2), txt_input, font=font, fill=txt_col)
-                final_doodle = Image.alpha_composite(base, img)
-            else:
-                final_doodle = img
-
-        # --- CAMBIO AQUÍ: Pasamos mem_title a la función ---
-        save_entry(date, location, notes, st.session_state.mem_img, final_doodle, mem_title)
         
-        st.success("¡Guardado!")
+        # Procesar el dibujo del canvas
+        if canvas_result.image_data is not None:
+            # Convertir numpy array a imagen PIL
+            img_doodle = Image.fromarray(canvas_result.image_data.astype("uint8"), "RGBA")
+            
+            # Si el usuario escribió texto, lo pegamos encima
+            if text_input:
+                # Crear un lienzo base del color del fondo para manejar transparencias correctamente
+                bg_rgb = tuple(int(doodle_bg.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+                base_img = Image.new("RGBA", img_doodle.size, bg_rgb + (255,))
+                
+                draw = ImageDraw.Draw(base_img)
+                # Intentar cargar fuente, si falla usar default
+                try:
+                    font = ImageFont.truetype("arial.ttf", text_size)
+                except:
+                    font = ImageFont.load_default()
+                
+                # Centrar texto (calculo simple)
+                w_text, h_text = draw.textsize(text_input, font=font) if hasattr(draw, 'textsize') else (0,0)
+                x_pos = (img_doodle.width - w_text) / 2
+                y_pos = (img_doodle.height - h_text) / 2
+                
+                draw.text((x_pos, y_pos), text_input, font=font, fill=text_color)
+                
+                # Combinar texto + dibujo
+                final_doodle = Image.alpha_composite(base_img, img_doodle)
+            else:
+                final_doodle = img_doodle
+
+        # Guardar todo usando la lógica
+        save_entry(date, location, notes, st.session_state.mem_img, final_doodle, memory_title)
+        st.success("¡Entrada guardada con éxito!")
+        
+        # Limpiar estado de la foto (opcional)
         st.session_state.mem_img = None
     else:
-        st.warning("Falta lugar o notas.")
+        st.warning("Por favor escribe al menos el lugar y las notas.")
 
-# --- HISTORIAL ---
+
+# --- SECCIÓN 4: GENERAR RELATO CON IA (RESTAURADO) ---
 st.divider()
-st.header("📚 Historial")
-for e in reversed(get_entries()):
-    with st.expander(f"{e['date']} - {e['location']}"):
-        st.write(e['text'])
-        c_img1, c_img2 = st.columns(2)
+if st.button("✨ Generar relato con IA"):
+    if location and notes:
+        with st.spinner("La IA está escribiendo tu historia..."):
+            try:
+                story = generate_story(location, notes)
+                st.write("### 📝 Relato generado")
+                st.markdown(story)
+            except Exception as e:
+                st.error(f"Error generando historia: {e}")
+    else:
+        st.error("Debes ingresar lugar y notas para generar la historia.")
+
+
+# --- SECCIÓN 5: VER TU DIARIO (HISTORIAL) ---
+st.header("📚 Tu diario")
+entries = get_entries()
+
+for e in reversed(entries):
+    with st.expander(f"{e['date']} — {e['location']}"):
+        st.write(e["text"])
         
-        # --- CAMBIO AQUÍ: Mostrar el título guardado ---
-        if e.get('memory_path'): 
-            title_display = e.get('memory_title') if e.get('memory_title') else "Recuerdo"
-            c_img1.image(e['memory_path'], caption=title_display)
-            
-        if e.get('doodle_path'): 
-            c_img2.image(e['doodle_path'], caption="Vibes/Doodle")
+        col_h1, col_h2 = st.columns(2)
+        
+        # Mostrar Foto de Recuerdo
+        with col_h1:
+            if e.get("memory_path"):
+                title_show = e.get("memory_title") if e.get("memory_title") else "Recuerdo"
+                try:
+                    st.image(e["memory_path"], caption=title_show, use_column_width=True)
+                except:
+                    st.error("Error cargando imagen")
+        
+        # Mostrar Doodle
+        with col_h2:
+            if e.get("doodle_path"):
+                try:
+                    st.image(e["doodle_path"], caption="Vibes / Doodle", use_column_width=True)
+                except:
+                    st.error("Error cargando doodle")
+
+
+# --- SECCIÓN 6: RECOMENDACIONES (RESTAURADO) ---
+st.divider()
+st.header("🌍 Recomendaciones")
+place_input = st.text_input("¿A dónde quieres ir ahora?")
+
+if st.button("Ver recomendaciones"):
+    if place_input:
+        with st.spinner("Buscando los mejores lugares..."):
+            try:
+                recs = get_recommendations(place_input)
+                st.write("### Lugares recomendados:")
+                st.write(recs)
+            except Exception as e:
+                st.error(f"Error obteniendo recomendaciones: {e}")
